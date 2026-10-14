@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { PromptInput } from './components/PromptInput';
 import { ComponentCard } from './components/ComponentCard';
 import { useComponentGenerator } from './hooks/useComponentGenerator';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { addPromptToHistory } from './utils/promptHistory';
+import { STORAGE_KEYS } from './utils/storageKeys';
 import type { Provider } from './types';
 import './App.css';
 
@@ -10,10 +13,30 @@ const PROVIDER_CONFIG = {
   google: { label: 'Google', placeholder: 'AIza...' },
 } as const;
 
+function reviveString(parsed: unknown): string {
+  if (typeof parsed !== 'string') throw new Error('invalid string');
+  return parsed;
+}
+
+function reviveHistory(parsed: unknown): string[] {
+  if (!Array.isArray(parsed)) throw new Error('invalid history');
+  return parsed.filter((item): item is string => typeof item === 'string');
+}
+
+function reviveProvider(parsed: unknown): Provider {
+  if (typeof parsed !== 'string' || !(parsed in PROVIDER_CONFIG)) throw new Error('invalid provider');
+  return parsed as Provider;
+}
+
 function App() {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useLocalStorage(STORAGE_KEYS.apiKey, '', reviveString);
   const [showKey, setShowKey] = useState(false);
-  const [provider, setProvider] = useState<Provider>('google');
+  const [provider, setProvider] = useLocalStorage<Provider>(STORAGE_KEYS.provider, 'google', reviveProvider);
+  const [promptHistory, setPromptHistory] = useLocalStorage<string[]>(
+    STORAGE_KEYS.promptHistory,
+    [],
+    reviveHistory,
+  );
   const [envKeys, setEnvKeys] = useState<Record<Provider, boolean>>({
     anthropic: false,
     google: false,
@@ -35,6 +58,7 @@ function App() {
       alert(`${PROVIDER_CONFIG[provider].label} API 키를 입력하거나 .env에 설정해주세요.`);
       return;
     }
+    setPromptHistory((prev) => addPromptToHistory(prev, prompt));
     generate(prompt, apiKey || undefined, provider);
   };
 
@@ -68,7 +92,7 @@ function App() {
 
       <main className="workspace">
         <section className="composer-panel" aria-label="컴포넌트 생성">
-          <PromptInput onGenerate={handleGenerate} isLoading={isLoading} />
+          <PromptInput onGenerate={handleGenerate} isLoading={isLoading} history={promptHistory} />
         </section>
 
         <aside className="settings-panel" aria-label="실행 설정">
