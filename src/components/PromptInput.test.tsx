@@ -75,4 +75,21 @@ describe('PromptInput', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
+
+  describe('최근 프롬프트', () => {
+    it('history가 비어 있으면 최근 프롬프트 영역을 보여주지 않는다', () => {
+      render(<PromptInput onGenerate={vi.fn()} isLoading={false} history={[]} />);
+      expect(screen.queryByText('최근 프롬프트')).not.toBeInTheDocument();
+    });
+
+    it('history 항목을 칩으로 보여주고 클릭하면 입력창에 채운다', async () => {
+      const user = userEvent.setup();
+      render(<PromptInput onGenerate={vi.fn()} isLoading={false} history={['요금제 카드', '검색 바']} />);
+
+      expect(screen.getByText('최근 프롬프트')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: '요금제 카드' }));
+
+      expect(screen.getByRole('textbox')).toHaveValue('요금제 카드');
+    });
+  });
 });
